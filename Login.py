@@ -7,9 +7,6 @@ from tkinter import messagebox
 # test_db.py
 from db_connection import create_connection
 
-# Get the connection
-connection = create_connection()
-
 # Login verification function
 def login():
     connection = create_connection()
@@ -29,7 +26,25 @@ def login():
 
         if result:
             messagebox.showinfo("Login Success", "Welcome, " + username + "!")
-            open_admin_window()  # Call function to open new window
+            try:
+                cursor = connection.cursor()
+                query = "SELECT role,team FROM users WHERE username = %s"
+                cursor.execute(query, (username,))
+                role,team = cursor.fetchone()
+                print(role)
+                print(team)
+                if role == "Admin":
+                    open_admin_window()
+                elif role == "Head":
+                    open_head_window(role,team)
+                else: 
+                    open_member_window(team)
+            except Error as e:
+                print(f"Error: '{e}' occurred during login with role")
+            finally:
+                cursor.close()
+                connection.close()
+
         else:
             messagebox.showerror("Login Failed", "Invalid username or password.")
     except Error as e:
@@ -38,7 +53,84 @@ def login():
         cursor.close()
         connection.close()
 
+def open_member_window(team):
+    print("Member Window")
+    app.destroy()  # Close the login window
+    
+    employe_window = CTk()
+    screen_width = employe_window.winfo_screenwidth()
+    screen_height = employe_window.winfo_screenheight()
+    
+    # Set the window size to fill the screen
+    employe_window.geometry(f"{screen_width}x{screen_height}")
+    employe_window.title("Employe Page")
+    
+    CTkLabel(master=employe_window, text=f"Welcome to the {team} Dashboard!", font=("Arial Bold", 24)).pack(pady=10)
+    
+    employe_window.mainloop()
+    
+    
+    
+def open_head_window(role,team): 
+    print("Head Window")
+    app.destroy()  # Close the login window
+    
+    head_window = CTk()
+    screen_width = head_window.winfo_screenwidth()
+    screen_height = head_window.winfo_screenheight()
+    
+    # Set the window size to fill the screen
+    head_window.geometry(f"{screen_width}x{screen_height}")
+    head_window.title("Head Page")
+    
+    CTkLabel(master=head_window, text=f"Welcome to the {role} of {team} Dashboard!", font=("Arial Bold", 24)).pack(pady=10)
+    # Table to display tasks
+    task_table_frame = CTkFrame(master=head_window)
+    task_table_frame.pack(fill="both", expand=True, pady=10)
 
+    def display_tasks():
+        for widget in task_table_frame.winfo_children():
+            widget.destroy()  # Clear existing task details
+
+        connection = create_connection()
+        if not connection:
+            messagebox.showerror("Database Error", "Unable to connect to the database.")
+            return
+
+        try:
+            cursor = connection.cursor()
+
+            # Build the query to fetch tasks
+            cursor.execute("SELECT title, description, deadline, priority, responsible_team, status FROM tasks where responsible_team = %s", (team,))
+            tasks = cursor.fetchall()
+
+            # Display headers for task table
+            task_headers = ["Title", "Description", "Deadline", "Priority", "Responsible Team", "Status"]
+            for col, header in enumerate(task_headers):
+                header_label = CTkLabel(task_table_frame, text=header, font=("Arial", 12, "bold"))
+                header_label.grid(row=0, column=col, padx=5, pady=5, sticky="w")
+                
+            if not tasks:
+                no_task_label = CTkLabel(task_table_frame, text="No tasks available", font=("Arial", 12))
+                no_task_label.grid(row=1, column=0, padx=5, pady=5, sticky="w")
+            else:
+
+            # Display task data
+             for row, task in enumerate(tasks, start=1):
+                for col, detail in enumerate(task):
+                    detail_label = CTkLabel(task_table_frame, text=detail)
+                    detail_label.grid(row=row, column=col, padx=5, pady=5, sticky="w")
+
+        except Error as e:
+            messagebox.showerror("Database Error", f"An error occurred: {e}")
+        finally:
+            cursor.close()
+            connection.close()
+            
+    # Initial display of tasks
+    display_tasks()
+
+    head_window.mainloop()    
 
 def open_admin_window():
     app.destroy()  # Close the login window
@@ -50,7 +142,7 @@ def open_admin_window():
 
     # Set the window size to fill the screen
     main_window.geometry(f"{screen_width}x{screen_height}")
-    main_window.title("Main Application")
+    main_window.title("Admin Page")
     
     # # Create a canvas and a scrollbar
     # canvas = Canvas(main_window)
@@ -72,12 +164,7 @@ def open_admin_window():
     # scrollbar.pack(side="right", fill="y")
 
     CTkLabel(master=main_window, text="Welcome to the Admin Dashboard!", font=("Arial Bold", 24)).pack(pady=10)
-
    
-
-
-
-
     # Filter Section: ComboBoxes for Role and Team, and Search Entry
     filter_frame = CTkFrame(master=main_window)
     filter_frame.pack(pady=10)
@@ -100,12 +187,109 @@ def open_admin_window():
      # Table to display users
     table_frame = CTkFrame(master=main_window)
     table_frame.pack(fill="both", expand=True, pady=10)
+         
     def display_users():
-    # Clear existing user details
-        for widget in table_frame.winfo_children():
-            widget.destroy()
-
-    # Establish database connection
+         # Clear existing user details
+         for widget in table_frame.winfo_children():
+             widget.destroy()
+     
+         # Establish database connection
+         connection = create_connection()
+         if not connection:
+             messagebox.showerror("Database Error", "Unable to connect to the database.")
+             return
+     
+         try:
+             cursor = connection.cursor()
+     
+             # Build the query based on filters
+             query = "SELECT username, first_name, last_name, password, role, team FROM users WHERE 1=1"
+             filters = []
+     
+             # Apply role filter
+             selected_role = role_filter.get()
+             if selected_role != "All":
+                 query += " AND role = %s"
+                 filters.append(selected_role)
+     
+             # Apply team filter
+             selected_team = team_filter.get()
+             if selected_team != "All":
+                 query += " AND team = %s"
+                 filters.append(selected_team)
+     
+             # Apply search filter
+             search_text = search_entry.get()
+             if search_text:
+                 query += " AND (username LIKE %s OR first_name LIKE %s OR last_name LIKE %s)"
+                 filters.extend([f"%{search_text}%"] * 3)
+     
+             # Execute the query with the filters
+             cursor.execute(query, tuple(filters))
+             users = cursor.fetchall()
+     
+             # Display headers in the table
+             headers = ["Username", "First Name", "Last Name", "Password", "Role", "Team", "Actions"]
+             for col, header in enumerate(headers):
+                 header_label = CTkLabel(table_frame, text=header, font=("Arial", 12, "bold"))
+                 header_label.grid(row=0, column=col, padx=5, pady=5, sticky="w")
+     
+             # Display user data in the table with action buttons
+             for row, user in enumerate(users, start=1):
+                 for col, detail in enumerate(user):
+                     detail_label = CTkLabel(table_frame, text=detail)
+                     detail_label.grid(row=row, column=col, padx=5, pady=5, sticky="w")
+     
+                 # Add Delete button
+                 delete_button = CTkButton(table_frame, text="Delete", command=lambda u=user[0]: delete_user(u))
+                 delete_button.grid(row=row, column=len(headers) - 2, padx=3, pady=5, sticky="w")
+     
+                 # Add Update button
+                 update_button = CTkButton(table_frame, text="Update", command=lambda u=user[0]: update_user(u))
+                 update_button.grid(row=row, column=len(headers) - 1, padx=3, pady=5, sticky="w")
+     
+         except Error as e:
+             messagebox.showerror("Database Error", f"An error occurred: {e}")
+         finally:
+             cursor.close()
+             connection.close()
+     
+         # Bind filter and search actions to refresh the table
+         role_filter.bind("<<ComboboxSelected>>", lambda e: display_users())
+         team_filter.bind("<<ComboboxSelected>>", lambda e: display_users())
+         search_entry.bind("<KeyRelease>", lambda e: display_users())
+     
+     # Function to delete user
+    def delete_user(username):
+         connection = create_connection()
+         if not connection:
+             messagebox.showerror("Database Error", "Unable to connect to the database.")
+             return
+     
+         try:
+             cursor = connection.cursor()
+             query = "DELETE FROM users WHERE username = %s"
+             cursor.execute(query, (username,))
+             connection.commit()
+             messagebox.showinfo("Success", f"User '{username}' deleted successfully.")
+             display_users()  # Refresh the user list
+         except Error as e:
+             messagebox.showerror("Database Error", f"An error occurred: {e}")
+         finally:
+             cursor.close()
+             connection.close()
+     
+     
+    
+     # Function to update user
+    def update_user(username):
+        # Open a new window or dialog to get updated information from the user
+        print("Updating user:", username)  # For demonstration
+        update_window = CTkToplevel()  # Use CTkToplevel for a new window
+        update_window.title("Update User")
+        update_window.geometry("400x300")
+    
+        # Get the user details
         connection = create_connection()
         if not connection:
             messagebox.showerror("Database Error", "Unable to connect to the database.")
@@ -113,58 +297,63 @@ def open_admin_window():
     
         try:
             cursor = connection.cursor()
+            cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
+            user = cursor.fetchone()  # Use fetchone() if expecting a single user
     
-            # Build the query based on filters
-            query = "SELECT username, first_name, last_name, password, role, team FROM users WHERE 1=1"
-            filters = []
+            if user:
+                # Display the user details in the update window
+                userName = CTkEntry(master=update_window, width=200, placeholder_text="Enter username")
+                userName.insert(0, user[1])  # user[0] is username
+                userName.pack(pady=5)
     
-            # Apply role filter
-            selected_role = role_filter.get()
-            if selected_role != "All":
-                query += " AND role = %s"
-                filters.append(selected_role)
+                firstName = CTkEntry(master=update_window, width=200, placeholder_text="Enter first name")
+                firstName.insert(0, user[3])  # user[1] is first name
+                firstName.pack(pady=5)
     
-            # Apply team filter
-            selected_team = team_filter.get()
-            if selected_team != "All":
-                query += " AND team = %s"
-                filters.append(selected_team)
+                lastName = CTkEntry(master=update_window, width=200, placeholder_text="Enter last name")
+                lastName.insert(0, user[4])  # user[2] is last name
+                lastName.pack(pady=5)
     
-            # Apply search filter
-            search_text = search_entry.get()
-            if search_text:
-                query += " AND (username LIKE %s OR first_name LIKE %s OR last_name LIKE %s)"
-                filters.extend([f"%{search_text}%"] * 3)
+                password = CTkEntry(master=update_window, width=200, placeholder_text="Enter user account password")
+                password.insert(0, user[2])  # user[3] is password
+                password.pack(pady=5)
     
-            # Execute the query with the filters
-            cursor.execute(query, tuple(filters))
-            users = cursor.fetchall()
+                # Button to update the user
+                button = CTkButton(master=update_window, text="Update User", 
+                                   command=lambda: update_user_data(userName.get(), firstName.get(), lastName.get(), password.get()))
+                button.pack(pady=10)
+            else:
+                messagebox.showerror("User Not Found", "The user does not exist.")
     
-            # Display headers in the table
-            headers = ["Username", "First Name", "Last Name", "Password", "Role", "Team"]
-            for col, header in enumerate(headers):
-                header_label = CTkLabel(table_frame, text=header, font=("Arial", 12, "bold"))
-                header_label.grid(row=0, column=col, padx=5, pady=5, sticky="w")
+        except Error as e:
+            messagebox.showerror("Database Error", f"An error occurred: {e}")
     
-            # Display user data in the table
-            for row, user in enumerate(users, start=1):
-                for col, detail in enumerate(user):
-                    detail_label = CTkLabel(table_frame, text=detail)
-                    detail_label.grid(row=row, column=col, padx=5, pady=5, sticky="w")
+        finally:
+            cursor.close()
+            connection.close()
     
+        # Run the window event loop
+        update_window.mainloop()
+    
+    
+    def update_user_data(username, first_name, last_name, password):
+        connection = create_connection()
+        if not connection:
+            messagebox.showerror("Database Error", "Unable to connect to the database.")
+            return
+    
+        try:
+            cursor = connection.cursor()
+            query = "UPDATE users SET first_name = %s, last_name = %s, password = %s WHERE username = %s"
+            cursor.execute(query, (first_name, last_name, password, username))
+            connection.commit()
+            messagebox.showinfo("Success", f"User '{username}' updated successfully.")
+            display_users()  # Refresh the user list
         except Error as e:
             messagebox.showerror("Database Error", f"An error occurred: {e}")
         finally:
             cursor.close()
             connection.close()
-        
-         # Table to display users
-         # Bind filter and search actions to refresh the table
-    role_filter.bind("<<ComboboxSelected>>", lambda e: display_users())
-    team_filter.bind("<<ComboboxSelected>>", lambda e: display_users())
-    search_entry.bind("<KeyRelease>", lambda e: display_users())
-
-
 
     def add_user_section():
         userName = CTkEntry(master=main_window, width=200, placeholder_text="Enter username")
@@ -302,11 +491,11 @@ def open_admin_window():
             cursor = connection.cursor()
 
             # Build the query to fetch tasks
-            cursor.execute("SELECT title, description, deadline, priority, responsible_team FROM tasks")
+            cursor.execute("SELECT title, description, deadline, priority, responsible_team,status FROM tasks")
             tasks = cursor.fetchall()
 
             # Display headers for task table
-            task_headers = ["Title", "Description", "Deadline", "Priority", "Responsible Team"]
+            task_headers = ["Title", "Description", "Deadline", "Priority", "Responsible Team" , "Status"]
             for col, header in enumerate(task_headers):
                 header_label = CTkLabel(task_table_frame, text=header, font=("Arial", 12, "bold"))
                 header_label.grid(row=0, column=col, padx=5, pady=5, sticky="w")
@@ -330,9 +519,26 @@ def open_admin_window():
 
 
 # Initialize login window
+def center_window(window, width, height):
+    # Get the screen width and height
+    screen_width = window.winfo_screenwidth()
+    screen_height = window.winfo_screenheight()
+
+    # Calculate the position to center the window
+    position_x = int((screen_width - width) / 2)
+    position_y = int((screen_height - height) / 2)
+
+    # Set the position of the window
+    window.geometry(f"{width}x{height}+{position_x}+{position_y}")
+
+# Initialize login window
 app = CTk()
 app.geometry("600x480")
-app.title("Login Interface")
+app.resizable(False, False)
+app.title("Login Page")
+
+# Center the window
+center_window(app, 600, 480)
 
 side_img_data = Image.open("side-img.png")
 user_icon_data = Image.open("icons8-user-64.png")
