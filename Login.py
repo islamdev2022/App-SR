@@ -1,9 +1,8 @@
 from customtkinter import *
-from tkinter import Canvas, Scrollbar
 from PIL import Image
 from mysql.connector import Error
-from tkinter import messagebox
-
+from tkinter import messagebox,Toplevel
+from tkcalendar import Calendar
 # test_db.py
 from db_connection import create_connection
 
@@ -25,7 +24,6 @@ def login():
         result = cursor.fetchone()
 
         if result:
-            messagebox.showinfo("Login Success", "Welcome, " + username + "!")
             try:
                 cursor = connection.cursor()
                 query = "SELECT role,team FROM users WHERE username = %s"
@@ -131,51 +129,40 @@ def open_head_window(role,team):
     display_tasks()
 
     head_window.mainloop()    
-
+    
+####################################################    HEAD PAGE(END)  ####################################################
+    
+    
+####################################################    ADMIN PAGE  ####################################################
 def open_admin_window():
     app.destroy()  # Close the login window
 
+    # Create the main window
     main_window = CTk()
-    # Get the screen width and height
     screen_width = main_window.winfo_screenwidth()
     screen_height = main_window.winfo_screenheight()
 
     # Set the window size to fill the screen
     main_window.geometry(f"{screen_width}x{screen_height}")
     main_window.title("Admin Page")
+    # Create a scrollable frame
+    admin_scrollable_frame = CTkScrollableFrame(master=main_window, width=screen_width, height=screen_height)
+    admin_scrollable_frame.pack(fill="both", expand=True)
     
-    # # Create a canvas and a scrollbar
-    # canvas = Canvas(main_window)
-    # scrollbar = Scrollbar(main_window, orient="vertical", command=canvas.yview)
-    # scrollable_frame = CTkFrame(canvas)
+    # Welcome label
+    CTkLabel(master=admin_scrollable_frame, text="Welcome to the Admin Dashboard!", font=("Arial Bold", 24)).pack(pady=10)
 
-    # scrollable_frame.bind(
-    #     "<Configure>",
-    #     lambda e: canvas.configure(
-    #         scrollregion=canvas.bbox("all")
-    #     )
-    # )
-
-    # canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-    # canvas.configure(yscrollcommand=scrollbar.set)
-
-    # # Pack the canvas and scrollbar
-    # canvas.pack(side="left", fill="both", expand=True)
-    # scrollbar.pack(side="right", fill="y")
-
-    CTkLabel(master=main_window, text="Welcome to the Admin Dashboard!", font=("Arial Bold", 24)).pack(pady=10)
-   
     # Filter Section: ComboBoxes for Role and Team, and Search Entry
-    filter_frame = CTkFrame(master=main_window)
+    filter_frame = CTkFrame(master=admin_scrollable_frame)
     filter_frame.pack(pady=10)
 
     roles = ["All", "Head", "Member"]
     teams = ["All", "Design", "Marketing", "Development", "Data Analysis"]
-    
+
     role_filter = CTkComboBox(master=filter_frame, values=roles, width=100)
     role_filter.set("All")
     role_filter.pack(side="left", padx=5)
-    
+
     team_filter = CTkComboBox(master=filter_frame, values=teams, width=100)
     team_filter.set("All")
     team_filter.pack(side="left", padx=5)
@@ -183,9 +170,9 @@ def open_admin_window():
     search_entry = CTkEntry(master=filter_frame, width=200, placeholder_text="Search by username or name")
     search_entry.pack(side="left", padx=5)
 
-    # Input fields for adding a new user
-     # Table to display users
-    table_frame = CTkFrame(master=main_window)
+
+    # Table Frame (Scrollable content can also go here if needed)
+    table_frame = CTkFrame(master=admin_scrollable_frame)
     table_frame.pack(fill="both", expand=True, pady=10)
          
     def display_users():
@@ -320,7 +307,7 @@ def open_admin_window():
     
                 # Button to update the user
                 button = CTkButton(master=update_window, text="Update User", 
-                                   command=lambda: update_user_data(userName.get(), firstName.get(), lastName.get(), password.get()))
+                                   command=lambda: update_user_data(userName.get(), firstName.get(), lastName.get(), password.get(), update_window))
                 button.pack(pady=10)
             else:
                 messagebox.showerror("User Not Found", "The user does not exist.")
@@ -336,7 +323,7 @@ def open_admin_window():
         update_window.mainloop()
     
     
-    def update_user_data(username, first_name, last_name, password):
+    def update_user_data(username, first_name, last_name, password, update_window):
         connection = create_connection()
         if not connection:
             messagebox.showerror("Database Error", "Unable to connect to the database.")
@@ -348,6 +335,7 @@ def open_admin_window():
             cursor.execute(query, (first_name, last_name, password, username))
             connection.commit()
             messagebox.showinfo("Success", f"User '{username}' updated successfully.")
+            update_window.destroy()  # Close the update window
             display_users()  # Refresh the user list
         except Error as e:
             messagebox.showerror("Database Error", f"An error occurred: {e}")
@@ -356,23 +344,23 @@ def open_admin_window():
             connection.close()
 
     def add_user_section():
-        userName = CTkEntry(master=main_window, width=200, placeholder_text="Enter username")
+        userName = CTkEntry(master=admin_scrollable_frame, width=200, placeholder_text="Enter username")
         userName.pack(pady=5)
 
-        firstName = CTkEntry(master=main_window, width=200, placeholder_text="Enter first name")
+        firstName = CTkEntry(master=admin_scrollable_frame, width=200, placeholder_text="Enter first name")
         firstName.pack(pady=5)
 
-        lastName = CTkEntry(master=main_window, width=200, placeholder_text="Enter last name")
+        lastName = CTkEntry(master=admin_scrollable_frame, width=200, placeholder_text="Enter last name")
         lastName.pack(pady=5)
 
-        password = CTkEntry(master=main_window, width=200, placeholder_text="Enter user account password")
+        password = CTkEntry(master=admin_scrollable_frame, width=200, placeholder_text="Enter user account password")
         password.pack(pady=5)
 
-        team_combo = CTkComboBox(master=main_window, values=teams[1:], width=200)  # Exclude "All" from team options
+        team_combo = CTkComboBox(master=admin_scrollable_frame, values=teams[1:], width=200)  # Exclude "All" from team options
         team_combo.pack(pady=5)
 
         is_head_var = BooleanVar()
-        head_checkbox = CTkCheckBox(master=main_window, text="Mark as Team Head", variable=is_head_var)
+        head_checkbox = CTkCheckBox(master=admin_scrollable_frame, text="Mark as Team Head", variable=is_head_var)
         head_checkbox.pack(pady=5)
 
         # Button to add a new user
@@ -415,35 +403,67 @@ def open_admin_window():
                 cursor.close()
                 connection.close()
 
-        add_user_button = CTkButton(master=main_window, text="Add User", command=create_user)
+        add_user_button = CTkButton(master=admin_scrollable_frame, text="Add User", command=create_user)
         add_user_button.pack(pady=10)
 
     add_user_section()
     display_users()
-    # --- Task Management Section ---
+
+
     def add_task_section():
-        task_title = CTkEntry(master=main_window, width=200, placeholder_text="Enter task title")
+        # Task Title Entry
+        task_title = CTkEntry(master=admin_scrollable_frame, width=200, placeholder_text="Enter task title")
         task_title.pack(pady=5)
 
-        task_description = CTkEntry(master=main_window, width=200, placeholder_text="Enter task description")
+        # Task Description Entry
+        task_description = CTkEntry(master=admin_scrollable_frame, width=200, placeholder_text="Enter task description")
         task_description.pack(pady=5)
 
-        task_deadline = CTkEntry(master=main_window, width=200, placeholder_text="Enter task deadline (YYYY-MM-DD)")
-        task_deadline.pack(pady=5)
+        # Placeholder for Date Selection
+        calendar_label = CTkEntry(master=admin_scrollable_frame, width=200, placeholder_text="Select task deadline")
+        calendar_label.pack(pady=5)
 
-        task_priority = CTkComboBox(master=main_window, values=["Low", "Medium", "High"], width=200)
+        # Function to Open Date Picker Popup
+        def open_date_picker():
+            # Create a popup window (Toplevel)
+            date_picker_window = Toplevel()
+            date_picker_window.title("Select Date")
+            date_picker_window.geometry("300x300")
+
+            # Add Calendar
+            calendar = Calendar(date_picker_window, selectmode="day", date_pattern="yyyy-mm-dd")
+            calendar.pack(pady=20)
+
+            # Function to Set Date and Close Popup
+            def set_date():
+                selected_date = calendar.get_date()
+                calendar_label.delete(0, "end")
+                calendar_label.insert(0, selected_date)
+                date_picker_window.destroy()
+
+            # Add Button to Confirm Date Selection
+            confirm_button = CTkButton(master=date_picker_window, text="Set Date", command=set_date)
+            confirm_button.pack(pady=10)
+
+        # Add Button to Open Date Picker
+        date_picker_button = CTkButton(master=admin_scrollable_frame, text="Select Deadline", command=open_date_picker)
+        date_picker_button.pack(pady=5)
+
+        # Priority Dropdown
+        task_priority = CTkComboBox(master=admin_scrollable_frame, values=["Low", "Medium", "High"], width=200)
         task_priority.set("Low")
         task_priority.pack(pady=5)
 
-        task_team = CTkComboBox(master=main_window, values=teams[1:], width=200)
+        # Team Dropdown
+        task_team = CTkComboBox(master=admin_scrollable_frame, values=teams[1:], width=200)
         task_team.set("Design")
         task_team.pack(pady=5)
 
-        # Button to add a new task
+        # Add Task Button
         def create_task():
             title = task_title.get()
             description = task_description.get()
-            deadline = task_deadline.get()
+            deadline = calendar_label.get()
             priority = task_priority.get()
             team = task_team.get()
 
@@ -469,14 +489,93 @@ def open_admin_window():
                 cursor.close()
                 connection.close()
 
-        add_task_button = CTkButton(master=main_window, text="Add Task", command=create_task)
+        add_task_button = CTkButton(master=admin_scrollable_frame, text="Add Task", command=create_task)
         add_task_button.pack(pady=10)
 
+    
     add_task_section()
 
     # Table to display tasks
-    task_table_frame = CTkFrame(master=main_window)
+    task_table_frame = CTkFrame(master=admin_scrollable_frame)
     task_table_frame.pack(fill="both", expand=True, pady=10)
+    
+    def update_task(task_title):
+        # Open a new window or dialog to get updated information from the user
+        print("Updating task:", task_title)  # For demonstration
+        update_task_window = CTkToplevel()  # Use CTkToplevel for a new window
+        update_task_window.title("Update Task")
+        update_task_window.geometry("400x300")
+        
+        # Get the task details
+        connection = create_connection()
+        if not connection:
+            messagebox.showerror("Database Error", "Unable to connect to the database.")
+            return
+        
+        try:
+            cursor = connection.cursor()
+            cursor.execute("SELECT * FROM tasks WHERE title = %s", (task_title,))
+            task = cursor.fetchone()  # Use fetchone() if expecting a single task
+        
+            if task:
+                # Display the task details in the update window
+                taskTitle = CTkEntry(master=update_task_window, width=200, placeholder_text="Enter task title")
+                taskTitle.insert(0, task[1])  # task[1] is title
+                taskTitle.pack(pady=5)
+        
+                taskDescription = CTkEntry(master=update_task_window, width=200, placeholder_text="Enter task description")
+                taskDescription.insert(0, task[2])  # task[2] is description
+                taskDescription.pack(pady=5)
+        
+                taskDeadline = CTkEntry(master=update_task_window, width=200, placeholder_text="Enter task deadline")
+                taskDeadline.insert(0, task[3])  # task[3] is deadline
+                taskDeadline.pack(pady=5)
+        
+                taskPriority = CTkComboBox(master=update_task_window, values=["Low", "Medium", "High"], width=200)
+                taskPriority.set(task[4])  # task[4] is priority
+                taskPriority.pack(pady=5)
+        
+                taskTeam = CTkComboBox(master=update_task_window, values=teams[1:], width=200)
+                taskTeam.set(task[5])  # task[5] is responsible team
+                taskTeam.pack(pady=5)
+        
+                taskStatus = CTkComboBox(master=update_task_window, values=["Pending", "In Progress", "Completed"], width=200)
+                taskStatus.set(task[6])  # task[6] is status
+                taskStatus.pack(pady=5)
+        
+                # Button to update the task
+                button = CTkButton(master=update_task_window, text="Update Task", 
+                                   command=lambda: update_task_data(taskTitle.get(), taskDescription.get(), taskDeadline.get(), taskPriority.get(), taskTeam.get(), taskStatus.get(), update_task_window))
+                button.pack(pady=10)
+            else:
+                messagebox.showerror("Task Not Found", "The task does not exist.")
+            
+        except Error as e:
+            messagebox.showerror("Database Error", f"An error occurred: {e}")
+        
+        finally:
+            cursor.close()
+            connection.close()
+            
+    def update_task_data(title, description, deadline, priority, team, status, update_task_window):
+        connection = create_connection()
+        if not connection:
+            messagebox.showerror("Database Error", "Unable to connect to the database.")
+            return
+        
+        try:
+            cursor = connection.cursor()
+            query = "UPDATE tasks SET description = %s, deadline = %s, priority = %s, responsible_team = %s, status = %s WHERE title = %s"
+            cursor.execute(query, (description, deadline, priority, team, status, title))
+            connection.commit()
+            messagebox.showinfo("Success", f"Task '{title}' updated successfully.")
+            update_task_window.destroy()  # Close the update window
+            display_tasks()  # Refresh the task list
+        except Error as e:
+            messagebox.showerror("Database Error", f"An error occurred: {e}")
+        finally:
+            cursor.close()
+            connection.close()
 
     def display_tasks():
         for widget in task_table_frame.winfo_children():
@@ -495,7 +594,7 @@ def open_admin_window():
             tasks = cursor.fetchall()
 
             # Display headers for task table
-            task_headers = ["Title", "Description", "Deadline", "Priority", "Responsible Team" , "Status"]
+            task_headers = ["Title", "Description", "Deadline", "Priority", "Responsible Team" , "Status" , "Update"]
             for col, header in enumerate(task_headers):
                 header_label = CTkLabel(task_table_frame, text=header, font=("Arial", 12, "bold"))
                 header_label.grid(row=0, column=col, padx=5, pady=5, sticky="w")
@@ -505,6 +604,9 @@ def open_admin_window():
                 for col, detail in enumerate(task):
                     detail_label = CTkLabel(task_table_frame, text=detail)
                     detail_label.grid(row=row, column=col, padx=5, pady=5, sticky="w")
+                # Add Update button
+                update_button = CTkButton(task_table_frame, text="Update", command=lambda u=task[0]: update_task(u))
+                update_button.grid(row=row, column=len(task_headers) - 1, padx=3, pady=5, sticky="w")
 
         except Error as e:
             messagebox.showerror("Database Error", f"An error occurred: {e}")
@@ -517,6 +619,7 @@ def open_admin_window():
 
     main_window.mainloop()
 
+####################################################    ADMIN PAGE(END)     ####################################################
 
 # Initialize login window
 def center_window(window, width, height):
