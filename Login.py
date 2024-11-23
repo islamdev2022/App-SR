@@ -149,102 +149,103 @@ def open_admin_window():
     admin_scrollable_frame = CTkScrollableFrame(master=main_window, width=screen_width, height=screen_height)
     admin_scrollable_frame.pack(fill="both", expand=True)
     
+    
+    
     # Welcome label
     CTkLabel(master=admin_scrollable_frame, text="Welcome to the Admin Dashboard!", font=("Arial Bold", 24)).pack(pady=10)
-
-    # Filter Section: ComboBoxes for Role and Team, and Search Entry
-    filter_frame = CTkFrame(master=admin_scrollable_frame)
-    filter_frame.pack(pady=10)
-
-    roles = ["All", "Head", "Member"]
-    teams = ["All", "Design", "Marketing", "Development", "Data Analysis"]
-
-    role_filter = CTkComboBox(master=filter_frame, values=roles, width=100)
-    role_filter.set("All")
-    role_filter.pack(side="left", padx=5)
-
-    team_filter = CTkComboBox(master=filter_frame, values=teams, width=100)
-    team_filter.set("All")
-    team_filter.pack(side="left", padx=5)
-
-    search_entry = CTkEntry(master=filter_frame, width=200, placeholder_text="Search by username or name")
-    search_entry.pack(side="left", padx=5)
-
-
-    # Table Frame (Scrollable content can also go here if needed)
-    table_frame = CTkFrame(master=admin_scrollable_frame)
-    table_frame.pack(fill="both", expand=True, pady=10)
-         
+  
     def display_users():
+          # Filter Section: ComboBoxes for Role and Team, and Search Entry
+        filter_frame = CTkFrame(master=admin_scrollable_frame)
+        filter_frame.pack(pady=10)
+    
+        roles = ["All", "Head", "Member"]
+        teams = ["All", "Design", "Marketing", "Development", "Data Analysis"]
+    
+        role_filter = CTkComboBox(master=filter_frame, values=roles, width=100)
+        role_filter.set("All")
+        role_filter.pack(side="left", padx=5)
+    
+        team_filter = CTkComboBox(master=filter_frame, values=teams, width=100)
+        team_filter.set("All")
+        team_filter.pack(side="left", padx=5)
+    
+        search_entry = CTkEntry(master=filter_frame, width=200, placeholder_text="Search by username or name")
+        search_entry.pack(side="left", padx=5)
+    
+    
+        # Table Frame (Scrollable content can also go here if needed)
+        table_frame = CTkFrame(master=admin_scrollable_frame)
+        table_frame.pack(fill="both", expand=True, pady=10)
          # Clear existing user details
-         for widget in table_frame.winfo_children():
-             widget.destroy()
-     
-         # Establish database connection
-         connection = create_connection()
-         if not connection:
-             messagebox.showerror("Database Error", "Unable to connect to the database.")
-             return
-     
-         try:
-             cursor = connection.cursor()
-     
-             # Build the query based on filters
-             query = "SELECT username, first_name, last_name, password, role, team FROM users WHERE 1=1"
-             filters = []
-     
-             # Apply role filter
-             selected_role = role_filter.get()
-             if selected_role != "All":
-                 query += " AND role = %s"
-                 filters.append(selected_role)
-     
-             # Apply team filter
-             selected_team = team_filter.get()
-             if selected_team != "All":
-                 query += " AND team = %s"
-                 filters.append(selected_team)
-     
-             # Apply search filter
-             search_text = search_entry.get()
-             if search_text:
-                 query += " AND (username LIKE %s OR first_name LIKE %s OR last_name LIKE %s)"
-                 filters.extend([f"%{search_text}%"] * 3)
-     
-             # Execute the query with the filters
-             cursor.execute(query, tuple(filters))
-             users = cursor.fetchall()
-     
-             # Display headers in the table
-             headers = ["Username", "First Name", "Last Name", "Password", "Role", "Team", "Actions"]
-             for col, header in enumerate(headers):
-                 header_label = CTkLabel(table_frame, text=header, font=("Arial", 12, "bold"))
-                 header_label.grid(row=0, column=col, padx=5, pady=5, sticky="w")
-     
-             # Display user data in the table with action buttons
-             for row, user in enumerate(users, start=1):
-                 for col, detail in enumerate(user):
-                     detail_label = CTkLabel(table_frame, text=detail)
-                     detail_label.grid(row=row, column=col, padx=5, pady=5, sticky="w")
-     
-                 # Add Delete button
-                 delete_button = CTkButton(table_frame, text="Delete", command=lambda u=user[0]: delete_user(u))
-                 delete_button.grid(row=row, column=len(headers) - 2, padx=3, pady=5, sticky="w")
-     
-                 # Add Update button
-                 update_button = CTkButton(table_frame, text="Update", command=lambda u=user[0]: update_user(u))
-                 update_button.grid(row=row, column=len(headers) - 1, padx=3, pady=5, sticky="w")
-     
-         except Error as e:
-             messagebox.showerror("Database Error", f"An error occurred: {e}")
-         finally:
-             cursor.close()
-             connection.close()
-     
-         # Bind filter and search actions to refresh the table
-         role_filter.bind("<<ComboboxSelected>>", lambda e: display_users())
-         team_filter.bind("<<ComboboxSelected>>", lambda e: display_users())
-         search_entry.bind("<KeyRelease>", lambda e: display_users())
+        for widget in table_frame.winfo_children():
+            widget.destroy()
+    
+        # Establish database connection
+        connection = create_connection()
+        if not connection:
+            messagebox.showerror("Database Error", "Unable to connect to the database.")
+            return
+    
+        try:
+            cursor = connection.cursor()
+    
+            # Build the query based on filters
+            query = "SELECT username, first_name, last_name, password, role, team FROM users WHERE 1=1"
+            filters = []
+    
+            # Apply role filter
+            selected_role = role_filter.get()
+            if selected_role != "All":
+                query += " AND role = %s"
+                filters.append(selected_role)
+    
+            # Apply team filter
+            selected_team = team_filter.get()
+            if selected_team != "All":
+                query += " AND team = %s"
+                filters.append(selected_team)
+    
+            # Apply search filter
+            search_text = search_entry.get()
+            if search_text:
+                query += " AND (username LIKE %s OR first_name LIKE %s OR last_name LIKE %s)"
+                filters.extend([f"%{search_text}%"] * 3)
+    
+            # Execute the query with the filters
+            cursor.execute(query, tuple(filters))
+            users = cursor.fetchall()
+    
+            # Display headers in the table
+            headers = ["Username", "First Name", "Last Name", "Password", "Role", "Team", "Actions"]
+            for col, header in enumerate(headers):
+                header_label = CTkLabel(table_frame, text=header, font=("Arial", 12, "bold"))
+                header_label.grid(row=0, column=col, padx=5, pady=5, sticky="w")
+    
+            # Display user data in the table with action buttons
+            for row, user in enumerate(users, start=1):
+                for col, detail in enumerate(user):
+                    detail_label = CTkLabel(table_frame, text=detail)
+                    detail_label.grid(row=row, column=col, padx=5, pady=5, sticky="w")
+    
+                # Add Delete button
+                delete_button = CTkButton(table_frame, text="Delete", command=lambda u=user[0]: delete_user(u))
+                delete_button.grid(row=row, column=len(headers) - 2, padx=3, pady=5, sticky="w")
+    
+                # Add Update button
+                update_button = CTkButton(table_frame, text="Update", command=lambda u=user[0]: update_user(u))
+                update_button.grid(row=row, column=len(headers) - 1, padx=3, pady=5, sticky="w")
+    
+        except Error as e:
+            messagebox.showerror("Database Error", f"An error occurred: {e}")
+        finally:
+            cursor.close()
+            connection.close()
+    
+        # Bind filter and search actions to refresh the table
+        role_filter.bind("<<ComboboxSelected>>", lambda e: display_users())
+        team_filter.bind("<<ComboboxSelected>>", lambda e: display_users())
+        search_entry.bind("<KeyRelease>", lambda e: display_users())
      
      # Function to delete user
     def delete_user(username):
@@ -342,7 +343,7 @@ def open_admin_window():
         finally:
             cursor.close()
             connection.close()
-
+    teams = ["All", "Design", "Marketing", "Development", "Data Analysis"]
     def add_user_section():
         userName = CTkEntry(master=admin_scrollable_frame, width=200, placeholder_text="Enter username")
         userName.pack(pady=5)
@@ -405,9 +406,10 @@ def open_admin_window():
 
         add_user_button = CTkButton(master=admin_scrollable_frame, text="Add User", command=create_user)
         add_user_button.pack(pady=10)
-
-    add_user_section()
+    
     display_users()
+    add_user_section()
+   
 
 
     def add_task_section():
@@ -493,7 +495,7 @@ def open_admin_window():
         add_task_button.pack(pady=10)
 
     
-    add_task_section()
+    
 
     # Table to display tasks
     task_table_frame = CTkFrame(master=admin_scrollable_frame)
@@ -615,7 +617,9 @@ def open_admin_window():
             connection.close()
 
     # Initial display of tasks
+    add_task_section()
     display_tasks()
+    
 
     main_window.mainloop()
 
