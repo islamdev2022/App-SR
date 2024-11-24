@@ -501,6 +501,24 @@ def open_admin_window():
     task_table_frame = CTkFrame(master=admin_scrollable_frame)
     task_table_frame.pack(fill="both", expand=True, pady=10)
     
+    def delete_task(task_title):
+        connection = create_connection()
+        if not connection:
+            messagebox.showerror("Database Error", "Unable to connect to the database.")
+            return
+        
+        try:
+            cursor = connection.cursor()
+            cursor.execute("DELETE FROM tasks WHERE title = %s", (task_title,))
+            connection.commit()
+            messagebox.showinfo("Success", f"Task '{task_title}' deleted successfully.")
+            display_tasks()  # Refresh the task list
+        except Error as e:
+            messagebox.showerror("Database Error", f"An error occurred: {e}")
+        finally:
+            cursor.close()
+            connection.close()
+    
     def update_task(task_title):
         # Open a new window or dialog to get updated information from the user
         print("Updating task:", task_title)  # For demonstration
@@ -609,6 +627,9 @@ def open_admin_window():
                 # Add Update button
                 update_button = CTkButton(task_table_frame, text="Update", command=lambda u=task[0]: update_task(u))
                 update_button.grid(row=row, column=len(task_headers) - 1, padx=3, pady=5, sticky="w")
+                # Add Delete button
+                delete_button = CTkButton(task_table_frame, text="Delete", command=lambda u=task[0]: delete_task(u))
+                delete_button.grid(row=row, column=len(task_headers) - 2, padx=3, pady=5, sticky="w")
 
         except Error as e:
             messagebox.showerror("Database Error", f"An error occurred: {e}")
