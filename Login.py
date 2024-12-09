@@ -8,50 +8,94 @@ from db_connection import create_connection
 
 # Login verification function
 def login():
-    connection = create_connection()
-    if not connection:
-        messagebox.showerror("Database Error", "Unable to connect to the database.")
-        return
-
-    username = username_entry.get()
-    password = password_entry.get()
-
-    # Verify credentials
-    try:
-        cursor = connection.cursor()
-        query = "SELECT * FROM users WHERE username = %s AND password = %s"
-        cursor.execute(query, (username, password))
-        result = cursor.fetchone()
-
-        if result:
-            try:
-                cursor = connection.cursor()
-                query = "SELECT role,team FROM users WHERE username = %s"
-                cursor.execute(query, (username,))
-                role,team = cursor.fetchone()
-                print(role)
-                print(team)
-                if role == "Admin":
-                    open_admin_window()
-                elif role == "Head":
-                    open_head_window(role,team)
-                else: 
-                    open_member_window(team)
-            except Error as e:
-                print(f"Error: '{e}' occurred during login with role")
-            finally:
-                cursor.close()
-                connection.close()
-
-        else:
-            messagebox.showerror("Login Failed", "Invalid username or password.")
-    except Error as e:
-        print(f"Error: '{e}' occurred during login")
-    finally:
-        cursor.close()
-        connection.close()
-
-def open_member_window(team):
+    def login_fun():
+        connection = create_connection()
+        if not connection:
+            messagebox.showerror("Database Error", "Unable to connect to the database.")
+            return
+    
+        username = username_entry.get()
+        password = password_entry.get()
+    
+        # Verify credentials
+        try:
+            cursor = connection.cursor()
+            query = "SELECT * FROM users WHERE username = %s AND password = %s"
+            cursor.execute(query, (username, password))
+            result = cursor.fetchone()
+    
+            if result:
+                try:
+                    cursor = connection.cursor()
+                    query = "SELECT id,role,team FROM users WHERE username = %s"
+                    cursor.execute(query, (username,))
+                    id,role,team = cursor.fetchone()
+                    print(role)
+                    print(team)
+                    if role == "Admin":
+                        open_admin_window(app)
+                    elif role == "Head":
+                        open_head_window(role,team,app)
+                    else: 
+                        open_member_window(team,app,id)
+                except Error as e:
+                    print(f"Error: '{e}' occurred during login with role")
+                finally:
+                    cursor.close()
+                    connection.close()
+    
+            else:
+                messagebox.showerror("Login Failed", "Invalid username or password.")
+        except Error as e:
+            print(f"Error: '{e}' occurred during login")
+        finally:
+            cursor.close()
+            connection.close()
+        # Initialize login window
+    app = CTk()
+    app.geometry("600x480")
+    app.resizable(False, False)
+    app.title("Login Page")
+    
+    # Center the window
+    center_window(app, 600, 480)
+    
+    side_img_data = Image.open("side-img.png")
+    user_icon_data = Image.open("icons8-user-64.png")
+    password_icon_data = Image.open("icons8-password-50.png")
+    
+    side_img = CTkImage(dark_image=side_img_data, light_image=side_img_data, size=(300, 480))
+    username_icon = CTkImage(dark_image=user_icon_data, light_image=user_icon_data, size=(20,20))
+    password_icon = CTkImage(dark_image=password_icon_data, light_image=password_icon_data, size=(17,17))
+    
+    CTkLabel(master=app, text="", image=side_img).pack(expand=True, side="left")
+    
+    frame = CTkFrame(master=app, width=300, height=480, fg_color="#ffffff")
+    frame.pack_propagate(0)
+    frame.pack(expand=True, side="right")
+    
+    CTkLabel(master=frame, text="Welcome Back!", text_color="#E4080A", anchor="w", justify="left", font=("Arial Bold", 24)).pack(anchor="w", pady=(50, 5), padx=(25, 0))
+    CTkLabel(master=frame, text="Sign in to your account", text_color="#7E7E7E", anchor="w", justify="left", font=("Arial Bold", 12)).pack(anchor="w", padx=(25, 0))
+    
+    CTkLabel(master=frame, text="  Username:", text_color="#E4080A", anchor="w", justify="left", font=("Arial Bold", 14), image=username_icon, compound="left").pack(anchor="w", pady=(38, 0), padx=(25, 0))
+    username_entry = CTkEntry(master=frame, width=225, fg_color="#EEEEEE", border_color="#E4080A", border_width=1, text_color="#000000")
+    username_entry.pack(anchor="w", padx=(25, 0))
+    
+    CTkLabel(master=frame, text="  Password:", text_color="#E4080A", anchor="w", justify="left", font=("Arial Bold", 14), image=password_icon, compound="left").pack(anchor="w", pady=(21, 0), padx=(25, 0))
+    password_entry = CTkEntry(master=frame, width=225, fg_color="#EEEEEE", border_color="#E4080A", border_width=1, text_color="#000000", show="*")
+    password_entry.pack(anchor="w", padx=(25, 0))
+    
+    CTkButton(master=frame, text="Login", fg_color="#E4080A", hover_color="#A80102" , font=("Arial Bold", 12), text_color="#ffffff", width=225, command=lambda:login_fun()).pack(anchor="w", pady=(40, 0), padx=(25, 0))
+    
+    app.mainloop()
+    
+def logout(current_window):
+    response = messagebox.askyesno("Logout", "Are you sure you want to logout?")
+    if response:
+        current_window.destroy()  # Destroy the main window
+        login()
+    
+def open_member_window(team,app,id):
     print("Member Window")
     app.destroy()  # Close the login window
     
@@ -63,13 +107,99 @@ def open_member_window(team):
     employe_window.geometry(f"{screen_width}x{screen_height}")
     employe_window.title("Employe Page")
     
+    connection = create_connection()
+    if not connection:
+        messagebox.showerror("Database Error", "Unable to connect to the database.")
+        return
+
+    try:
+        cursor = connection.cursor()
+        query = "SELECT first_name, last_name FROM users WHERE id = %s"
+        cursor.execute(query, (id,))
+        user = cursor.fetchone()
+        if user:
+            first_name, last_name = user
+            CTkLabel(master=employe_window, text=f"Hello, {first_name} {last_name}!", font=("Arial Bold", 24)).pack(pady=10)
+        else:
+            CTkLabel(master=employe_window, text="User not found", font=("Arial Bold", 24)).pack(pady=10)
+    except Error as e:
+        messagebox.showerror("Database Error", f"An error occurred: {e}")
+    finally:
+        cursor.close()
+        connection.close()
+    
     CTkLabel(master=employe_window, text=f"Welcome to the {team} Dashboard!", font=("Arial Bold", 24)).pack(pady=10)
     
+    logout_button = CTkButton(master=employe_window, text="Logout", command=lambda:logout(employe_window))
+    logout_button.pack(pady=10)
+    
+    def fetch_task(team, employe_window):
+        connection = create_connection()
+        if not connection:
+            messagebox.showerror("Database Error", "Unable to connect to the database.")
+            return
+
+        try:
+            cursor = connection.cursor()
+            query = "SELECT id, title, status FROM tasks WHERE responsible_team = %s"
+            cursor.execute(query, (team,))
+            tasks = cursor.fetchall()
+
+            if not tasks:
+                CTkLabel(master=employe_window, text="No tasks available", font=("Arial", 12)).pack(pady=10)
+            else:
+                for task in tasks:
+                    task_id, task_title, task_status = task
+
+                    # Create a frame for each task
+                    frame = CTkFrame(master=employe_window)
+                    frame.pack(fill="x", pady=5, padx=10)
+
+                    # Display task title
+                    CTkLabel(master=frame, text=task_title, font=("Arial", 12)).pack(side="left", padx=5)
+
+                    # Create a combobox to update status
+                    status_combobox = CTkComboBox(master=frame, values=["Pending", "In Progress", "Completed"], width=150)
+                    status_combobox.set(task_status)
+                    status_combobox.pack(side="left", padx=5)
+
+                    # Function to update the status
+                    def update_status(task_id, combobox, title):
+                        new_status = combobox.get()
+                        connection = create_connection()
+                        if not connection:
+                            messagebox.showerror("Database Error", "Unable to connect to the database.")
+                            return
+
+                        try:
+                            cursor = connection.cursor()
+                            update_query = "UPDATE tasks SET status = %s WHERE id = %s"
+                            cursor.execute(update_query, (new_status, task_id))
+                            connection.commit()
+                            messagebox.showinfo("Success", f"Task '{title}' status updated to '{new_status}'.")
+                        except Error as e:
+                            messagebox.showerror("Database Error", f"An error occurred: {e}")
+                        finally:
+                            connection.close()
+
+
+                    # Add an "Update Status" button
+                    update_button = CTkButton(master=frame, text="Update Status", command=lambda:update_status(task_id, status_combobox, task_title))
+                    update_button.pack(side="right", padx=5)
+
+        except Error as e:
+            messagebox.showerror("Database Error", f"An error occurred: {e}")
+        finally:
+            cursor.close()
+            connection.close()
+            
+    fetch_task(team, employe_window)
+
     employe_window.mainloop()
+
     
     
-    
-def open_head_window(role,team): 
+def open_head_window(role,team,app): 
     print("Head Window")
     app.destroy()  # Close the login window
     
@@ -82,6 +212,10 @@ def open_head_window(role,team):
     head_window.title("Head Page")
     
     CTkLabel(master=head_window, text=f"Welcome to the {role} of {team} Dashboard!", font=("Arial Bold", 24)).pack(pady=10)
+    
+    logout_button = CTkButton(master=head_window, text="Logout", command=lambda:logout(head_window))
+    logout_button.pack(pady=10)
+    
     # Table to display tasks
     task_table_frame = CTkFrame(master=head_window)
     task_table_frame.pack(fill="both", expand=True, pady=10)
@@ -134,7 +268,7 @@ def open_head_window(role,team):
     
     
 ####################################################    ADMIN PAGE  ####################################################
-def open_admin_window():
+def open_admin_window(app):
     app.destroy()  # Close the login window
 
     # Create the main window
@@ -149,10 +283,12 @@ def open_admin_window():
     admin_scrollable_frame = CTkScrollableFrame(master=main_window, width=screen_width, height=screen_height)
     admin_scrollable_frame.pack(fill="both", expand=True)
     
-    
-    
     # Welcome label
     CTkLabel(master=admin_scrollable_frame, text="Welcome to the Admin Dashboard!", font=("Arial Bold", 24)).pack(pady=10)
+    logout_button = CTkButton(master=admin_scrollable_frame, text="Logout", command=lambda:logout(main_window))
+    logout_button.pack(pady=10)
+    
+    
   
     def display_users():
           # Filter Section: ComboBoxes for Role and Team, and Search Entry
@@ -397,6 +533,14 @@ def open_admin_window():
                 cursor.execute(query, (username, user_password, first_name, last_name, role, team))
                 connection.commit()
                 messagebox.showinfo("Success", f"User '{username}' added successfully.")
+                display_users() # Refresh the user list
+                
+                userName.delete(0, 'end')
+                firstName.delete(0, 'end')
+                lastName.delete(0, 'end')
+                password.delete(0, 'end')
+                team_combo.set('')
+                head_checkbox.deselect()
                 
             except Error as e:
                 messagebox.showerror("Database Error", f"An error occurred: {e}")
@@ -659,40 +803,4 @@ def center_window(window, width, height):
     # Set the position of the window
     window.geometry(f"{width}x{height}+{position_x}+{position_y}")
 
-# Initialize login window
-app = CTk()
-app.geometry("600x480")
-app.resizable(False, False)
-app.title("Login Page")
-
-# Center the window
-center_window(app, 600, 480)
-
-side_img_data = Image.open("side-img.png")
-user_icon_data = Image.open("icons8-user-64.png")
-password_icon_data = Image.open("icons8-password-50.png")
-
-side_img = CTkImage(dark_image=side_img_data, light_image=side_img_data, size=(300, 480))
-username_icon = CTkImage(dark_image=user_icon_data, light_image=user_icon_data, size=(20,20))
-password_icon = CTkImage(dark_image=password_icon_data, light_image=password_icon_data, size=(17,17))
-
-CTkLabel(master=app, text="", image=side_img).pack(expand=True, side="left")
-
-frame = CTkFrame(master=app, width=300, height=480, fg_color="#ffffff")
-frame.pack_propagate(0)
-frame.pack(expand=True, side="right")
-
-CTkLabel(master=frame, text="Welcome Back!", text_color="#E4080A", anchor="w", justify="left", font=("Arial Bold", 24)).pack(anchor="w", pady=(50, 5), padx=(25, 0))
-CTkLabel(master=frame, text="Sign in to your account", text_color="#7E7E7E", anchor="w", justify="left", font=("Arial Bold", 12)).pack(anchor="w", padx=(25, 0))
-
-CTkLabel(master=frame, text="  Username:", text_color="#E4080A", anchor="w", justify="left", font=("Arial Bold", 14), image=username_icon, compound="left").pack(anchor="w", pady=(38, 0), padx=(25, 0))
-username_entry = CTkEntry(master=frame, width=225, fg_color="#EEEEEE", border_color="#E4080A", border_width=1, text_color="#000000")
-username_entry.pack(anchor="w", padx=(25, 0))
-
-CTkLabel(master=frame, text="  Password:", text_color="#E4080A", anchor="w", justify="left", font=("Arial Bold", 14), image=password_icon, compound="left").pack(anchor="w", pady=(21, 0), padx=(25, 0))
-password_entry = CTkEntry(master=frame, width=225, fg_color="#EEEEEE", border_color="#E4080A", border_width=1, text_color="#000000", show="*")
-password_entry.pack(anchor="w", padx=(25, 0))
-
-CTkButton(master=frame, text="Login", fg_color="#E4080A", hover_color="#A80102" , font=("Arial Bold", 12), text_color="#ffffff", width=225, command=login).pack(anchor="w", pady=(40, 0), padx=(25, 0))
-
-app.mainloop()
+login()
