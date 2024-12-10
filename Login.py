@@ -1,7 +1,7 @@
 from customtkinter import *
 from PIL import Image
 from mysql.connector import Error
-from tkinter import messagebox,Toplevel
+from tkinter import messagebox,Toplevel , Canvas, Scrollbar,CENTER
 from tkcalendar import Calendar
 # test_db.py
 from db_connection import create_connection
@@ -105,6 +105,7 @@ def open_member_window(team,app,id):
     
     # Set the window size to fill the screen
     employe_window.geometry(f"{screen_width}x{screen_height}")
+    employe_window.state("zoomed")
     employe_window.title("Employe Page")
     
     connection = create_connection()
@@ -208,7 +209,7 @@ def open_head_window(role,team,app):
     screen_height = head_window.winfo_screenheight()
     
     # Set the window size to fill the screen
-    head_window.geometry(f"{screen_width}x{screen_height}")
+    head_window.state("zoomed")
     head_window.title("Head Page")
     
     CTkLabel(master=head_window, text=f"Welcome to the {role} of {team} Dashboard!", font=("Arial Bold", 24)).pack(pady=10)
@@ -277,7 +278,7 @@ def open_admin_window(app):
     screen_height = main_window.winfo_screenheight()
 
     # Set the window size to fill the screen
-    main_window.geometry(f"{screen_width}x{screen_height}")
+    main_window.state("zoomed")
     main_window.title("Admin Page")
     # Create a scrollable frame
     admin_scrollable_frame = CTkScrollableFrame(master=main_window, width=screen_width, height=screen_height)
@@ -352,26 +353,60 @@ def open_admin_window(app):
             cursor.execute(query, tuple(filters))
             users = cursor.fetchall()
     
-            # Display headers in the table
+           # Define table headers
             headers = ["Username", "First Name", "Last Name", "Password", "Role", "Team", "Actions"]
+
+            # Create table headers with styling
             for col, header in enumerate(headers):
-                header_label = CTkLabel(table_frame, text=header, font=("Arial", 12, "bold"))
-                header_label.grid(row=0, column=col, padx=5, pady=5, sticky="w")
-    
-            # Display user data in the table with action buttons
+                header_label = CTkLabel(
+                    table_frame, 
+                    text=header, 
+                    font=("Arial", 12, "bold"), 
+                    fg_color="#3b82f6", 
+                    text_color="white", 
+                    corner_radius=5, 
+                    width=100
+                )
+                header_label.grid(row=0, column=col, padx=10, pady=10, sticky="w")
+
+            # Alternate row colors for better readability
             for row, user in enumerate(users, start=1):
+                bg_color = "#f9f9f9" if row % 2 == 0 else "#ffffff"
                 for col, detail in enumerate(user):
-                    detail_label = CTkLabel(table_frame, text=detail)
-                    detail_label.grid(row=row, column=col, padx=5, pady=5, sticky="w")
-    
-                # Add Delete button
-                delete_button = CTkButton(table_frame, text="Delete", command=lambda u=user[0]: delete_user(u))
-                delete_button.grid(row=row, column=len(headers) - 2, padx=3, pady=5, sticky="w")
-    
-                # Add Update button
-                update_button = CTkButton(table_frame, text="Update", command=lambda u=user[0]: update_user(u))
-                update_button.grid(row=row, column=len(headers) - 1, padx=3, pady=5, sticky="w")
-    
+                    detail_label = CTkLabel(
+                        table_frame, 
+                        text=detail, 
+                        font=("Arial", 10), 
+                        text_color="#ffffff",
+                        width=100, 
+                        anchor="w"
+                    )
+                    detail_label.grid(row=row, column=col, padx=10, pady=5, sticky="w")
+
+                # Add Delete button with hover effect
+                delete_button = CTkButton(
+                    table_frame, 
+                    text="Delete", 
+                    command=lambda u=user[0]: delete_user(u), 
+                    fg_color="#f87171", 
+                    hover_color="#ef4444", 
+                    text_color="white", 
+                    corner_radius=5
+                )
+                delete_button.grid(row=row, column=len(headers) - 2, padx=5, pady=5, sticky="w")
+
+                # Add Update button with hover effect
+                update_button = CTkButton(
+                    table_frame, 
+                    text="Update", 
+                    command=lambda u=user[0]: update_user(u), 
+                    fg_color="#34d399", 
+                    hover_color="#10b981", 
+                    text_color="white", 
+                    corner_radius=5
+                )
+                update_button.grid(row=row, column=len(headers) - 1, padx=5, pady=5, sticky="w")
+
         except Error as e:
             messagebox.showerror("Database Error", f"An error occurred: {e}")
         finally:
@@ -760,19 +795,40 @@ def open_admin_window(app):
             # Display headers for task table
             task_headers = ["Title", "Description", "Deadline", "Priority", "Responsible Team" , "Status" , "Update"]
             for col, header in enumerate(task_headers):
-                header_label = CTkLabel(task_table_frame, text=header, font=("Arial", 12, "bold"))
-                header_label.grid(row=0, column=col, padx=5, pady=5, sticky="w")
+                header_label = CTkLabel(
+                    task_table_frame, 
+                    text=header, 
+                    font=("Arial", 12, "bold"), 
+                    fg_color="#3b82f6", 
+                    text_color="white", 
+                    corner_radius=5, 
+                    width=100
+                )
+                header_label.grid(row=0, column=col, padx=10, pady=10, sticky="w")
 
             # Display task data
             for row, task in enumerate(tasks, start=1):
                 for col, detail in enumerate(task):
-                    detail_label = CTkLabel(task_table_frame, text=detail)
-                    detail_label.grid(row=row, column=col, padx=5, pady=5, sticky="w")
+                    detail_label = CTkLabel(
+                        task_table_frame, 
+                        text=detail, 
+                        font=("Arial", 10), 
+                        text_color="#ffffff",
+                        width=100, 
+                        anchor="w"
+                    )
+                    detail_label.grid(row=row, column=col, padx=10, pady=5, sticky="w")
                 # Add Update button
-                update_button = CTkButton(task_table_frame, text="Update", command=lambda u=task[0]: update_task(u))
+                update_button = CTkButton(task_table_frame, text="Update", command=lambda u=task[0]: update_task(u),fg_color="#34d399", 
+                    hover_color="#10b981", 
+                    text_color="white", 
+                    corner_radius=5)
                 update_button.grid(row=row, column=len(task_headers) - 1, padx=3, pady=5, sticky="w")
                 # Add Delete button
-                delete_button = CTkButton(task_table_frame, text="Delete", command=lambda u=task[0]: delete_task(u))
+                delete_button = CTkButton(task_table_frame, text="Delete", command=lambda u=task[0]: delete_task(u),fg_color="#f87171", 
+                    hover_color="#ef4444", 
+                    text_color="white", 
+                    corner_radius=5)
                 delete_button.grid(row=row, column=len(task_headers) - 2, padx=3, pady=5, sticky="w")
 
         except Error as e:
