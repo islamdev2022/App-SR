@@ -312,8 +312,12 @@ def open_admin_window(app):
     
     
         # Table Frame (Scrollable content can also go here if needed)
-        table_frame = CTkFrame(master=admin_scrollable_frame)
+        table_frame = CTkFrame(master=admin_scrollable_frame, corner_radius=10, border_width=2)
         table_frame.pack(fill="both", expand=True, pady=10)
+        
+        title_label=CTkLabel(master=table_frame, text="User Details", font=("Arial Bold", 24))
+        title_label.pack(pady=10)
+        
          # Clear existing user details
         for widget in table_frame.winfo_children():
             widget.destroy()
@@ -354,7 +358,7 @@ def open_admin_window(app):
             users = cursor.fetchall()
     
            # Define table headers
-            headers = ["Username", "First Name", "Last Name", "Password", "Role", "Team", "Actions"]
+            headers = ["Username", "First Name", "Last Name", "Password", "Role", "Team", "delete", "update"]
 
             # Create table headers with styling
             for col, header in enumerate(headers):
@@ -365,21 +369,27 @@ def open_admin_window(app):
                     fg_color="#3b82f6", 
                     text_color="white", 
                     corner_radius=5, 
-                    width=100
+                    width=100,
+                    compound= "center"
                 )
                 header_label.grid(row=0, column=col, padx=10, pady=10, sticky="w")
 
             # Alternate row colors for better readability
             for row, user in enumerate(users, start=1):
-                bg_color = "#f9f9f9" if row % 2 == 0 else "#ffffff"
+                # Add border before every row and column
+                
                 for col, detail in enumerate(user):
+                    frame = CTkFrame(master=table_frame, border_width=1, border_color="white" ,corner_radius=0 , height=50)
+                    frame.grid(row=row, column=col, sticky="w")
                     detail_label = CTkLabel(
                         table_frame, 
                         text=detail, 
-                        font=("Arial", 10), 
+                        font=("Arial", 12), 
                         text_color="#ffffff",
                         width=100, 
-                        anchor="w"
+                        anchor="w",
+                        corner_radius=10, 
+                        
                     )
                     detail_label.grid(row=row, column=col, padx=10, pady=5, sticky="w")
 
@@ -413,10 +423,10 @@ def open_admin_window(app):
             cursor.close()
             connection.close()
     
-        # Bind filter and search actions to refresh the table
-        role_filter.bind("<<ComboboxSelected>>", lambda e: display_users())
-        team_filter.bind("<<ComboboxSelected>>", lambda e: display_users())
-        search_entry.bind("<KeyRelease>", lambda e: display_users())
+        # # Bind filter and search actions to refresh the table
+        # role_filter.bind("<<ComboboxSelected>>", lambda e: display_users())
+        # team_filter.bind("<<ComboboxSelected>>", lambda e: display_users())
+        # search_entry.bind("<KeyRelease>", lambda e: display_users())
      
      # Function to delete user
     def delete_user(username):
@@ -431,7 +441,7 @@ def open_admin_window(app):
              cursor.execute(query, (username,))
              connection.commit()
              messagebox.showinfo("Success", f"User '{username}' deleted successfully.")
-             display_users()  # Refresh the user list
+            #  display_users()  # Refresh the user list
          except Error as e:
              messagebox.showerror("Database Error", f"An error occurred: {e}")
          finally:
@@ -568,7 +578,7 @@ def open_admin_window(app):
                 cursor.execute(query, (username, user_password, first_name, last_name, role, team))
                 connection.commit()
                 messagebox.showinfo("Success", f"User '{username}' added successfully.")
-                display_users() # Refresh the user list
+                # display_users() # Refresh the user list
                 
                 userName.delete(0, 'end')
                 firstName.delete(0, 'end')
@@ -808,6 +818,8 @@ def open_admin_window(app):
 
             # Display task data
             for row, task in enumerate(tasks, start=1):
+                frame = CTkFrame(master=task_table_frame, border_width=1, border_color="white")
+                frame.grid(row=row, column=col, padx=1, pady=1, sticky="w")
                 for col, detail in enumerate(task):
                     detail_label = CTkLabel(
                         task_table_frame, 
