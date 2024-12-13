@@ -6,6 +6,24 @@ from tkcalendar import Calendar
 # test_db.py
 from db_connection import create_connection
 
+def add_action_to_history(uesrname,role,action):
+    print(f"User {uesrname} with role {role} performed action {action}")
+    connection = create_connection()
+    if not connection:
+        messagebox.showerror("Database Error", "Unable to connect to the database.")
+        return
+    try:
+        cursor = connection.cursor()
+        query = "INSERT INTO actions_history (username, role, action) VALUES (%s, %s, %s)"
+        cursor.execute(query, (uesrname, role, action))
+        print("Action added to history")
+        connection.commit()
+    except Error as e:
+        print(f"Error: '{e}' occurred during adding action to history")
+    finally:
+        cursor.close()
+        connection.close()
+
 # Login verification function
 def login():
     def login_fun():
@@ -33,11 +51,14 @@ def login():
                     print(role)
                     print(team)
                     if role == "Admin":
-                        open_admin_window(app)
+                        add_action_to_history(username,role,"Login")
+                        open_admin_window(username,app)
                     elif role == "Head":
-                        open_head_window(role,team,app)
+                        add_action_to_history(username,f"{role} {team}","Login")
+                        open_head_window(username,role,team,app)
                     else: 
-                        open_member_window(team,app,id)
+                        add_action_to_history(username,role,"Login")
+                        open_member_window(username,team,app,id)
                 except Error as e:
                     print(f"Error: '{e}' occurred during login with role")
                 finally:
@@ -89,13 +110,14 @@ def login():
     
     app.mainloop()
     
-def logout(current_window):
+def logout(username,role,current_window):
     response = messagebox.askyesno("Logout", "Are you sure you want to logout?")
     if response:
         current_window.destroy()  # Destroy the main window
+        add_action_to_history(username,role,"Logout")
         login()
     
-def open_member_window(team,app,id):
+def open_member_window(username,team,app,id):
     print("Member Window")
     app.destroy()  # Close the login window
     
@@ -131,7 +153,7 @@ def open_member_window(team,app,id):
     
     CTkLabel(master=employe_window, text=f"Welcome to the {team} Dashboard!", font=("Arial Bold", 24)).pack(pady=10)
     
-    logout_button = CTkButton(master=employe_window, text="Logout", command=lambda:logout(employe_window))
+    logout_button = CTkButton(master=employe_window, text="Logout", command=lambda:logout(username,f"member {team}",employe_window))
     logout_button.pack(pady=10)
     task_header = ["Title", "Description", "Deadline", "Status"]
     def fetch_task(team, employe_window):
@@ -240,7 +262,7 @@ def open_member_window(team,app,id):
 
     
     
-def open_head_window(role, team, app):
+def open_head_window(username,role, team, app):
     print("Head Window")
     app.destroy()  # Close the login window
     
@@ -255,7 +277,7 @@ def open_head_window(role, team, app):
     
     CTkLabel(master=head_window, text=f"Welcome to the {role} of {team} Dashboard!", font=("Arial Bold", 24)).pack(pady=10)
     
-    logout_button = CTkButton(master=head_window, text="Logout", command=lambda: logout(head_window))
+    logout_button = CTkButton(master=head_window, text="Logout", command=lambda: logout(username,f"{role} {team}",head_window))
     logout_button.pack(pady=10)
     
     # Frame for task table
@@ -396,7 +418,7 @@ def open_head_window(role, team, app):
     
     
 ####################################################    ADMIN PAGE  ####################################################
-def open_admin_window(app):
+def open_admin_window(username,app):
     app.destroy()  # Close the login window
 
     # Create the main window
@@ -413,7 +435,7 @@ def open_admin_window(app):
     
     # Welcome label
     CTkLabel(master=admin_scrollable_frame, text="Welcome to the Admin Dashboard!", font=("Arial Bold", 24)).pack(pady=10)
-    logout_button = CTkButton(master=admin_scrollable_frame, text="Logout", command=lambda:logout(main_window))
+    logout_button = CTkButton(master=admin_scrollable_frame, text="Logout", command=lambda:logout(username,"Admin",main_window))
     logout_button.pack(pady=10)
     
     
@@ -533,7 +555,7 @@ def open_admin_window(app):
                 update_button = CTkButton(
                     table_frame, 
                     text="Update", 
-                    command=lambda u=user[0]: update_user(u), 
+                    command=lambda u=user[0]: update_user(username,u), 
                     fg_color="#34d399", 
                     hover_color="#10b981", 
                     text_color="white", 
@@ -553,7 +575,7 @@ def open_admin_window(app):
         # search_entry.bind("<KeyRelease>", lambda e: display_users())
      
      # Function to delete user
-    def delete_user(username):
+    def delete_user(usernamem):
          connection = create_connection()
          if not connection:
              messagebox.showerror("Database Error", "Unable to connect to the database.")
@@ -562,9 +584,10 @@ def open_admin_window(app):
          try:
              cursor = connection.cursor()
              query = "DELETE FROM users WHERE username = %s"
-             cursor.execute(query, (username,))
+             cursor.execute(query, (usernamem,))
              connection.commit()
-             messagebox.showinfo("Success", f"User '{username}' deleted successfully.")
+             messagebox.showinfo("Success", f"User '{usernamem}' deleted successfully.")
+             add_action_to_history(username,"Admin",f"Delete user {usernamem}")
             #  display_users()  # Refresh the user list
          except Error as e:
              messagebox.showerror("Database Error", f"An error occurred: {e}")
@@ -575,7 +598,7 @@ def open_admin_window(app):
      
     
      # Function to update user
-    def update_user(username):
+    def update_user(u,username):
         # Open a new window or dialog to get updated information from the user
         print("Updating user:", username)  # For demonstration
         update_window = CTkToplevel()  # Use CTkToplevel for a new window
@@ -613,7 +636,7 @@ def open_admin_window(app):
     
                 # Button to update the user
                 button = CTkButton(master=update_window, text="Update User", 
-                                   command=lambda: update_user_data(userName.get(), firstName.get(), lastName.get(), password.get(), update_window))
+                                   command=lambda: update_user_data(u,userName.get(), firstName.get(), lastName.get(), password.get(), update_window))
                 button.pack(pady=10)
             else:
                 messagebox.showerror("User Not Found", "The user does not exist.")
@@ -629,7 +652,7 @@ def open_admin_window(app):
         update_window.mainloop()
     
     
-    def update_user_data(username, first_name, last_name, password, update_window):
+    def update_user_data(usernamem, first_name, last_name, password, update_window):
         connection = create_connection()
         if not connection:
             messagebox.showerror("Database Error", "Unable to connect to the database.")
@@ -638,9 +661,10 @@ def open_admin_window(app):
         try:
             cursor = connection.cursor()
             query = "UPDATE users SET first_name = %s, last_name = %s, password = %s WHERE username = %s"
-            cursor.execute(query, (first_name, last_name, password, username))
+            cursor.execute(query, (first_name, last_name, password, usernamem))
             connection.commit()
-            messagebox.showinfo("Success", f"User '{username}' updated successfully.")
+            messagebox.showinfo("Success", f"User '{usernamem}' updated successfully.")
+            add_action_to_history(username,"Admin",f"updated user {usernamem}")
             update_window.destroy()  # Close the update window
             display_users()  # Refresh the user list
         except Error as e:
@@ -677,7 +701,7 @@ def open_admin_window(app):
 
         # Button to add a new user
         
-        def create_user():
+        def create_user(userNameo):
             username = userName.get()
             first_name = firstName.get()
             last_name = lastName.get()
@@ -708,6 +732,7 @@ def open_admin_window(app):
                 cursor.execute(query, (username, user_password, first_name, last_name, role, team))
                 connection.commit()
                 messagebox.showinfo("Success", f"User '{username}' added successfully.")
+                add_action_to_history(userNameo,"Admin",f"added user {username}")
                 # display_users() # Refresh the user list
                 
                 userName.delete(0, 'end')
@@ -723,7 +748,7 @@ def open_admin_window(app):
                 cursor.close()
                 connection.close()
 
-        add_user_button = CTkButton(master=create_user_frame, text="Add User", command=create_user)
+        add_user_button = CTkButton(master=create_user_frame, text="Add User", command=lambda:create_user(username))
         add_user_button.pack(pady=10)
     
     display_users()
@@ -787,7 +812,7 @@ def open_admin_window(app):
         task_team.pack(pady=5)
 
         # Add Task Button
-        def create_task():
+        def create_task(username):
             title = task_title.get()
             description = task_description.get()
             deadline = calendar_label.get()
@@ -809,6 +834,7 @@ def open_admin_window(app):
                 cursor.execute(query, (title, description, deadline, priority, team))
                 connection.commit()
                 messagebox.showinfo("Success", f"Task '{title}' added successfully.")
+                add_action_to_history(username,"Admin",f"added task {title}")
                 display_tasks()
             except Error as e:
                 messagebox.showerror("Database Error", f"An error occurred: {e}")
@@ -816,7 +842,7 @@ def open_admin_window(app):
                 cursor.close()
                 connection.close()
 
-        add_task_button = CTkButton(master=create_task_frame, text="Add Task", command=create_task)
+        add_task_button = CTkButton(master=create_task_frame, text="Add Task", command=lambda:create_task(username))
         add_task_button.pack(pady=10)
 
     
@@ -826,7 +852,7 @@ def open_admin_window(app):
     task_table_frame = CTkScrollableFrame(master=admin_scrollable_frame,width=screen_width, height=200 ,corner_radius=10, border_width=2)
     task_table_frame.pack(fill="both", expand=True, pady=10)
     
-    def delete_task(task_title):
+    def delete_task(usrename,task_title):
         connection = create_connection()
         if not connection:
             messagebox.showerror("Database Error", "Unable to connect to the database.")
@@ -837,6 +863,7 @@ def open_admin_window(app):
             cursor.execute("DELETE FROM tasks WHERE title = %s", (task_title,))
             connection.commit()
             messagebox.showinfo("Success", f"Task '{task_title}' deleted successfully.")
+            add_action_to_history(usrename,"Admin",f"deleted task {task_title}")
             display_tasks()  # Refresh the task list
         except Error as e:
             messagebox.showerror("Database Error", f"An error occurred: {e}")
@@ -844,7 +871,7 @@ def open_admin_window(app):
             cursor.close()
             connection.close()
     
-    def update_task(task_title):
+    def update_task(username,task_title):
         # Open a new window or dialog to get updated information from the user
         print("Updating task:", task_title)  # For demonstration
         update_task_window = CTkToplevel()  # Use CTkToplevel for a new window
@@ -885,7 +912,7 @@ def open_admin_window(app):
                 taskTeam.pack(pady=5)
         
                 taskStatus = CTkComboBox(master=update_task_window, values=["Pending", "In Progress", "Completed"], width=200)
-                taskStatus.set(task[6])  # task[6] is status
+                taskStatus.set(task[7])  # task[7] is status
                 taskStatus.pack(pady=5)
         
                 # Button to update the task
@@ -914,6 +941,7 @@ def open_admin_window(app):
             cursor.execute(query, (description, deadline, priority, team, status, title))
             connection.commit()
             messagebox.showinfo("Success", f"Task '{title}' updated successfully.")
+            add_action_to_history(username,"Admin",f"updated task {title}")
             update_task_window.destroy()  # Close the update window
             display_tasks()  # Refresh the task list
         except Error as e:
@@ -968,13 +996,13 @@ def open_admin_window(app):
                     )
                     detail_label.grid(row=row, column=col, padx=10, pady=5, sticky="w")
                 # Add Update button
-                update_button = CTkButton(task_table_frame, text="Update", command=lambda u=task[0]: update_task(u),fg_color="#34d399", 
+                update_button = CTkButton(task_table_frame, text="Update", command=lambda u=task[0]: update_task(username,u),fg_color="#34d399", 
                     hover_color="#10b981", 
                     text_color="white", 
                     corner_radius=5)
                 update_button.grid(row=row, column=len(task_headers) - 1, padx=3, pady=5, sticky="w")
                 # Add Delete button
-                delete_button = CTkButton(task_table_frame, text="Delete", command=lambda u=task[0]: delete_task(u),fg_color="#f87171", 
+                delete_button = CTkButton(task_table_frame, text="Delete", command=lambda u=task[0]: delete_task(username,u),fg_color="#f87171", 
                     hover_color="#ef4444", 
                     text_color="white", 
                     corner_radius=5)
