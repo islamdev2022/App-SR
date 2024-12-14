@@ -647,7 +647,7 @@ def open_admin_window(username,app):
     
                 # Button to update the user
                 button = CTkButton(master=update_window, text="Update User", 
-                                   command=lambda: update_user_data(u,userName.get(), firstName.get(), lastName.get(), password.get(), update_window))
+                                   command=lambda: update_user_data(userName.get(), firstName.get(), lastName.get(), password.get(), update_window))
                 button.pack(pady=10)
             else:
                 messagebox.showerror("User Not Found", "The user does not exist.")
