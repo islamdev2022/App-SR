@@ -1,7 +1,7 @@
 from customtkinter import *
 from PIL import Image
 from mysql.connector import Error
-from tkinter import messagebox,Toplevel , Canvas, Scrollbar,CENTER
+from tkinter import messagebox,Toplevel
 from tkcalendar import Calendar
 # test_db.py
 from db_connection import create_connection
@@ -229,6 +229,7 @@ def open_member_window(username,team,app,id):
                             cursor.execute(update_query, (new_status, task_id))
                             connection.commit()
                             messagebox.showinfo("Success", f"Task '{title}' status updated to '{new_status}'.")
+                            add_action_to_history(username,f"member {team}",f"updated task {title} status to {new_status}")
                         except Error as e:
                             messagebox.showerror("Database Error", f"An error occurred: {e}")
                         finally:
@@ -329,6 +330,7 @@ def open_head_window(username,role, team, app):
 
                         messagebox.showinfo("Success", f"Task assigned to {selected_member_name} successfully.")
                         assign_to_window.destroy()  # Close the assignment window
+                        add_action_to_history(username,f"{role} {team}",f"assigned task {task_title} to {selected_member_name}")
                         display_tasks()  # Refresh the task display to reflect changes
                     except Error as e:
                         messagebox.showerror("Database Error", f"An error occurred: {e}")
@@ -357,11 +359,10 @@ def open_head_window(username,role, team, app):
 
         try:
             cursor = connection.cursor()
-            cursor.execute("SELECT id, title, description, deadline, priority, status FROM tasks WHERE responsible_team = %s", (team,))
+            cursor.execute("SELECT id, title, description, deadline, priority, status ,responsible_member FROM tasks WHERE responsible_team = %s", (team,))
             tasks = cursor.fetchall()
-
             # Display headers
-            headers = ["Title", "Description", "Deadline", "Priority", "Status", "Action"]
+            headers = ["Title", "Description", "Deadline", "Priority", "Status" ,"Responsible Member", "Action"]
             for col, header in enumerate(headers):
                 CTkLabel(task_table_frame, text=header, font=("Arial", 12, "bold"),fg_color="#3b82f6", 
                     text_color="white", 
@@ -373,7 +374,7 @@ def open_head_window(username,role, team, app):
                 CTkLabel(task_table_frame, text="No tasks available", font=("Arial", 12)).grid(row=1, column=0, padx=5, pady=5, sticky="w")
             else:
                 for row, task in enumerate(tasks, start=1):
-                    task_id, title, description, deadline, priority, status = task
+                    task_id, title, description, deadline, priority, status ,responsible_member= task
                     CTkLabel(task_table_frame, text=title,font=("Arial", 12), 
                         text_color="#ffffff",
                         width=100, 
@@ -399,9 +400,16 @@ def open_head_window(username,role, team, app):
                         width=100, 
                         anchor="w",
                         corner_radius=10,).grid(row=row, column=4, padx=5, pady=5, sticky="w")
+                    if responsible_member == None:
+                        responsible_member = "Not Assigned"
+                    CTkLabel(task_table_frame, text=responsible_member,font=("Arial", 12),
+                        text_color="#ffffff",
+                        width=100, 
+                        anchor="w",
+                        corner_radius=10,).grid(row=row, column=5, padx=5, pady=5, sticky="w")
                     
                     assign_button = CTkButton(task_table_frame, text="Assign To", command=lambda t_id=task_id, t_title=title: assign_to(t_id, t_title))
-                    assign_button.grid(row=row, column=5, padx=5, pady=5, sticky="w")
+                    assign_button.grid(row=row, column=6, padx=5, pady=5, sticky="w")
 
         except Error as e:
             messagebox.showerror("Database Error", f"An error occurred: {e}")
@@ -463,6 +471,9 @@ def open_admin_window(username,app):
         # Table Frame (Scrollable content can also go here if needed)
         table_frame = CTkScrollableFrame(master=admin_scrollable_frame,width=screen_width, height=200 ,corner_radius=10, border_width=2)
         table_frame.pack(fill="both", expand=True, pady=10)
+        
+        users_label = CTkLabel(master=table_frame, text="List of Users", font=("Arial Bold", 24))
+        users_label.pack(pady=10)
         
          # Clear existing user details
         for widget in table_frame.winfo_children():
@@ -666,13 +677,12 @@ def open_admin_window(username,app):
             messagebox.showinfo("Success", f"User '{usernamem}' updated successfully.")
             add_action_to_history(username,"Admin",f"updated user {usernamem}")
             update_window.destroy()  # Close the update window
-            display_users()  # Refresh the user list
         except Error as e:
             messagebox.showerror("Database Error", f"An error occurred: {e}")
         finally:
             cursor.close()
             connection.close()
-    teams = ["All", "Design", "Marketing", "Development", "Data Analysis"]
+    teams = ["All", "Design", "Marketing", "Development", "Data Analysis","Managemnt" , "External Relations"]
     def add_user_section():
         
         create_user_frame=CTkFrame(master=admin_scrollable_frame , corner_radius=10, border_width=2 , width=900)
@@ -852,6 +862,9 @@ def open_admin_window(username,app):
     task_table_frame = CTkScrollableFrame(master=admin_scrollable_frame,width=screen_width, height=200 ,corner_radius=10, border_width=2)
     task_table_frame.pack(fill="both", expand=True, pady=10)
     
+    task_label = CTkLabel(master=task_table_frame, text="List of Tasks", font=("Arial Bold", 24))
+    task_label.pack(pady=10)
+    
     def delete_task(usrename,task_title):
         connection = create_connection()
         if not connection:
@@ -871,7 +884,7 @@ def open_admin_window(username,app):
             cursor.close()
             connection.close()
     
-    def update_task(username,task_title):
+    def update_task(task_title):
         # Open a new window or dialog to get updated information from the user
         print("Updating task:", task_title)  # For demonstration
         update_task_window = CTkToplevel()  # Use CTkToplevel for a new window
@@ -996,7 +1009,7 @@ def open_admin_window(username,app):
                     )
                     detail_label.grid(row=row, column=col, padx=10, pady=5, sticky="w")
                 # Add Update button
-                update_button = CTkButton(task_table_frame, text="Update", command=lambda u=task[0]: update_task(username,u),fg_color="#34d399", 
+                update_button = CTkButton(task_table_frame, text="Update", command=lambda u=task[0]: update_task(u),fg_color="#34d399", 
                     hover_color="#10b981", 
                     text_color="white", 
                     corner_radius=5)
@@ -1018,6 +1031,64 @@ def open_admin_window(username,app):
     add_task_section()
     display_tasks()
     
+    history_table_frame = CTkScrollableFrame(master=admin_scrollable_frame,width=screen_width, height=200 ,corner_radius=10, border_width=2)
+    history_table_frame.pack(fill="both", expand=True, pady=10)
+    
+    history_label = CTkLabel(master=history_table_frame, text="Actions History", font=("Arial Bold", 24))
+    history_label.pack(pady=10)
+    
+    def display_actions_history():
+        for widget in history_table_frame.winfo_children():
+            widget.destroy()
+        connection = create_connection()
+        if not connection:
+            messagebox.showerror("Database Error", "Unable to connect to the database.")
+            return
+
+        try:
+            cursor = connection.cursor()
+
+            # Build the query to fetch tasks
+            cursor.execute("SELECT username, role, action,date FROM actions_history")
+            actions = cursor.fetchall()
+
+            # Display headers for task table
+            
+            history_header = ["Username", "Role", "Action","Date"]
+            for col, header in enumerate(history_header):
+                header_label = CTkLabel(
+                    history_table_frame, 
+                    text=header, 
+                    font=("Arial", 12, "bold"), 
+                    fg_color="#3b82f6", 
+                    text_color="white", 
+                    corner_radius=5, 
+                    width=100
+                )
+                header_label.grid(row=0, column=col, padx=10, pady=10, sticky="w")
+
+            # Display task data
+            for row, task in enumerate(actions, start=1):
+                for col, detail in enumerate(task):
+                    frame = CTkFrame(master=history_table_frame, border_width=1, border_color="white",corner_radius=0, height=50)
+                    frame.grid(row=row, column=col,sticky="w")
+                    detail_label = CTkLabel(
+                        history_table_frame, 
+                        text=detail, 
+                        font=("Arial", 12), 
+                        text_color="#ffffff",
+                        width=100, 
+                        anchor="w"
+                    )
+                    detail_label.grid(row=row, column=col, padx=10, pady=5, sticky="w")
+
+        except Error as e:
+            messagebox.showerror("Database Error", f"An error occurred: {e}")
+        finally:
+            cursor.close()
+            connection.close()   
+        
+    display_actions_history() 
 
     main_window.mainloop()
 
